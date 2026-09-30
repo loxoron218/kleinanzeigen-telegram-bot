@@ -98,9 +98,14 @@ async fn scrape_kleinanzeigen_page(client: &Client, url: &str) -> Result<Vec<Ad>
     let document = Html::parse_document(&response);
 
     // Define CSS selectors to find the necessary elements on the page.
-    let ad_selector = Selector::parse("article.aditem").unwrap();
-    let title_link_selector = Selector::parse("a.ellipsis").unwrap();
-    let image_selector = Selector::parse(".aditem-image img").unwrap();
+    // NOTE (2026-09-29): kleinanzeigen.de relaunched search HTML (Astro + Tailwind).
+    // Old: article.aditem / a.ellipsis / .aditem-image img → 0 hits.
+    // New: article[data-adid] / h3 a[href^="/s-anzeige/"] / div[data-image-container] img.
+    let ad_selector = Selector::parse("article[data-adid]").unwrap();
+    let title_link_selector = Selector::parse("h3 a[href^=\"/s-anzeige/\"]").unwrap();
+    let title_link_fallback = Selector::parse("a[href^=\"/s-anzeige/\"]").unwrap();
+    let image_selector = Selector::parse("div[data-image-container] img").unwrap();
+    let image_fallback = Selector::parse("img").unwrap();
     let mut listings = Vec::new();
 
     // Iterate over each ad container found on the page.
@@ -108,11 +113,23 @@ async fn scrape_kleinanzeigen_page(client: &Client, url: &str) -> Result<Vec<Ad>
         // Extract the unique ad ID from the 'data-adid' attribute.
         if let Some(ad_id) = article.value().attr("data-adid") {
             // Find the primary link within the ad, which contains the title.
-            if let Some(link_element) = article.select(&title_link_selector).next() {
-                if let Some(href) = link_element.value().attr("href") {
+            // Prefer h3 title link, fall back to any /s-anzeige/ link.
+            let link_element = article
+                .select(&title_link_selector)
+                .next()
+                .or_else(|| article.select(&title_link_fallback).next());
+            // Fall back to data-href on <article> if no <a> matched.
+            let href_owned: Option<String> = link_element
+                .and_then(|el| el.value().attr("href").map(String::from))
+                .or_else(|| article.value().attr("data-href").map(String::from));
+            if let Some(href) = href_owned {
+                // Resolve title text (may be empty when using data-href fallback).
+                let title = link_element
+                    .map(|el| el.text().collect::<String>().trim().to_string())
+                    .filter(|t| !t.is_empty())
+                    .unwrap_or_default();
                     // We only care about actual ad links, not other miscellaneous links.
                     if href.starts_with("/s-anzeige/") {
-                        let title = link_element.text().collect::<String>().trim().to_string();
                         let full_link = format!("https://www.kleinanzeigen.de{}", href);
 
                         // --- IMPROVED IMAGE QUALITY FIX ---
@@ -120,6 +137,7 @@ async fn scrape_kleinanzeigen_page(client: &Client, url: &str) -> Result<Vec<Ad>
                         let image_url = article
                             .select(&image_selector)
                             .next()
+                            .or_else(|| article.select(&image_fallback).next())
                             .and_then(|img| {
                                 // `srcset` provides multiple image sizes. We take the last one, which is usually the highest resolution.
                                 if let Some(srcset) = img.value().attr("srcset") {
@@ -153,7 +171,6 @@ async fn scrape_kleinanzeigen_page(client: &Client, url: &str) -> Result<Vec<Ad>
                 }
             }
         }
-    }
 
     // Return the vector of scraped ads
     Ok(listings)
