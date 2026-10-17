@@ -98,6 +98,10 @@ pub async fn run(config: &Config) -> Result<(), AppError> {
 /// # Returns
 ///
 /// * `Result<Client, AppError>` - Configured client or a descriptive error.
+///
+/// # Errors
+///
+/// * `AppError` - HTTP client building failed.
 fn build_client() -> Result<Client, AppError> {
     Ok(Client::builder().user_agent(USER_AGENT).build()?)
 }
@@ -113,6 +117,10 @@ fn build_client() -> Result<Client, AppError> {
 /// # Returns
 ///
 /// * `Result<Vec<Ad>, AppError>` - Collected advertisements in crawl order.
+///
+/// # Errors
+///
+/// * `AppError` - Scraping a search page failed.
 async fn crawl_all(
     client: &Client,
     config: &Config,

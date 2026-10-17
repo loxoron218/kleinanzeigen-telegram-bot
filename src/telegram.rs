@@ -153,6 +153,10 @@ pub async fn send_text(
 /// # Returns
 ///
 /// * `Result<Response, TelegramError>` - Raw API response.
+///
+/// # Errors
+///
+/// * `TelegramError` - HTTP transport failed.
 async fn post_form(
     client: &Client,
     url: &str,
@@ -175,6 +179,11 @@ async fn post_form(
 /// # Returns
 ///
 /// * `Result<Option<u64>, TelegramError>` - Retry hint, none on success.
+///
+/// # Errors
+///
+/// * `TelegramError` - HTTP transport failed.
+/// * `TelegramError` - Telegram API returned an error.
 async fn interpret_response(response: Response) -> Result<Option<u64>, TelegramError> {
     let status = response.status();
     if status.is_success() {

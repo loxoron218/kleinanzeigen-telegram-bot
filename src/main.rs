@@ -43,6 +43,10 @@ async fn main() -> Result<()> {
 /// # Returns
 ///
 /// * `Result<()>` - Success or a descriptive filter error.
+///
+/// # Errors
+///
+/// * `anyhow::Error` - Tracing init failed.
 fn init_tracing() -> Result<()> {
     let file_appender = daily("logs", "bot.log");
     let file_layer = layer().json().with_writer(file_appender);

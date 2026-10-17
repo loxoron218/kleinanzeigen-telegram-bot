@@ -125,6 +125,10 @@ pub async fn scrape_page(client: &Client, url: &str) -> Result<Vec<Ad>, ScrapeEr
 /// # Returns
 ///
 /// * `Result<Vec<Ad>, ScrapeError>` - Parsed advertisements or a selector error.
+///
+/// # Errors
+///
+/// * `ScrapeError` - CSS selector is invalid.
 fn parse_document(html: &str) -> Result<Vec<Ad>, ScrapeError> {
     let document = Html::parse_document(html);
     let article_selector = parse_selector(ARTICLE_SELECTOR)?;
@@ -143,6 +147,10 @@ fn parse_document(html: &str) -> Result<Vec<Ad>, ScrapeError> {
 /// # Returns
 ///
 /// * `Result<Selector, ScrapeError>` - Parsed selector or a descriptive error.
+///
+/// # Errors
+///
+/// * `ScrapeError` - CSS selector is invalid.
 fn parse_selector(pattern: &str) -> Result<Selector, ScrapeError> {
     Selector::parse(pattern).map_err(|error| ScrapeError::selector(error.to_string()))
 }
